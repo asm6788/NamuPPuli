@@ -32,7 +32,7 @@ fn main() {
             {
                 continue;
             }
-            println!("{}", remove_suffix(&caps[1], "|"));
+            println!("{}", remove_suffix(remove_suffix(&caps[1], "|"), "#"));
         }
     }
 }
