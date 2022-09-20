@@ -1,5 +1,6 @@
 use dashmap::DashMap;
 use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -34,6 +35,15 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 fn main() {
     let file = File::open(r"test.json").unwrap();
     let pb = Arc::new(ProgressBar::new(file.metadata().unwrap().len()));
+
+    pb.set_style(
+        ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:60.cyan/blue} {pos:>7}/{len:7} {bytes_per_sec} {eta}",
+        )
+        .unwrap()
+        .progress_chars("##-"),
+    );
+
     let counter_d = DashMap::new();
     let counter: Arc<DashMap<String, u16>> = Arc::new(counter_d);
 
