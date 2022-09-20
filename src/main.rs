@@ -1,10 +1,12 @@
-use rustc_hash::FxHashMap;
+use dashmap::setref::multiple::RefMulti;
+use dashmap::DashMap;
+use indicatif::ProgressBar;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::{str, thread, time};
+use std::str;
 
-fn read_n<R>(reader: R, bytes_to_read: u64) -> Vec<u8>
+fn read_n<R>(reader: R, bytes_to_read: u64) -> Result<Vec<u8>, i8>
 where
     R: Read,
 {
@@ -13,8 +15,11 @@ where
     // Do appropriate error handling for your situation
     // Maybe it's OK if you didn't read enough bytes?
     let n = chunk.read_to_end(&mut buf).expect("Didn't read enough");
-    assert_eq!(bytes_to_read as usize, n);
-    buf
+    if bytes_to_read as usize == n {
+        Ok(buf)
+    } else {
+        Err(-1)
+    }
 }
 
 fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
@@ -25,14 +30,21 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 }
 
 fn main() {
-    let mut reader = BufReader::new(File::open(r"test.json").unwrap());
-    let mut counter: FxHashMap<String, u16> = FxHashMap::default();
+    let file = File::open(r"test.json").unwrap();
+    let pb = ProgressBar::new(file.metadata().unwrap().len());
+    let mut reader = BufReader::new(file);
+
+    let counter: DashMap<String, u16> = DashMap::new();
     let mut record = vec![];
     let mut do_record = false;
     let mut buf = vec![0, 0];
     loop {
+        pb.inc(1);
         buf.rotate_left(1);
-        buf[1] = read_n(&mut reader, 1)[0];
+        buf[1] = match read_n(&mut reader, 1) {
+            Ok(v) => v[0],
+            Err(_) => break,
+        };
 
         if buf[0] == b'[' && buf[1] == b'[' {
             do_record = true;
@@ -57,9 +69,14 @@ fn main() {
 
                 href = remove_suffix(remove_suffix(&href, "|"), "#");
                 *counter.entry(String::from(href)).or_insert(0) += 1;
-                println!("{}가 {}번 참고됨", href, counter[&String::from(href)]);
                 record.clear();
             }
         }
+    }
+
+    let mut hash_vec: Vec<_> = counter.iter().collect();
+    hash_vec.sort_by(|a, b| b.cmp(a));
+    for line in hash_vec.into_iter() {
+        println!("{}: {}", line.key(), line.value());
     }
 }
