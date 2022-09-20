@@ -19,8 +19,8 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 fn main() {
     let out: Vec<NamuWiki>;
     {
-        let data = fs::read_to_string(r"F:\namuwiki210301\namuwiki_20210301.json")
-            .expect("Unable to read file");
+        let data =
+            fs::read_to_string(r"/home/asm6788/NamuPPuli/test.json").expect("Unable to read file");
         out = serde_json::from_str(&data).unwrap();
     }
     let href = Regex::new(r"\[\[(.*?)\]\]").unwrap();
@@ -39,4 +39,8 @@ fn main() {
             *counter.entry(String::from(href)).or_insert(0) += 1;
         }
     }
+    let mut hash_vec: Vec<(&String, &u16)> = counter.iter().collect();
+    hash_vec.sort_by(|a, b| b.1.cmp(a.1));
+
+    println!("{:?}", hash_vec);
 }
