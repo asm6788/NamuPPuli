@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 indicatif = "0.17.1"
 dashmap = "5.4.0"
+num_cpus = "1.13.1"
