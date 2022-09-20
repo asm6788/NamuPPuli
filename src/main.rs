@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 
 #[derive(Deserialize, Debug)]
@@ -23,16 +24,19 @@ fn main() {
         out = serde_json::from_str(&data).unwrap();
     }
     let href = Regex::new(r"\[\[(.*?)\]\]").unwrap();
+
+    let mut counter: HashMap<String, u16> = HashMap::new();
     for data in out.iter() {
         for caps in href.captures_iter(&data.text) {
-            if caps[1].contains("파일:")
-                || caps[1].contains("분류:")
-                || caps[1].contains("틀:")
+            if caps[1].starts_with("파일:")
+                || caps[1].starts_with("분류:")
+                || caps[1].starts_with("틀:")
                 || caps[1].starts_with("http")
             {
                 continue;
             }
-            println!("{}", remove_suffix(remove_suffix(&caps[1], "|"), "#"));
+            let href = remove_suffix(remove_suffix(&caps[1], "|"), "#");
+            *counter.entry(String::from(href)).or_insert(0) += 1;
         }
     }
 }
