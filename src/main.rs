@@ -7,22 +7,6 @@ use std::str;
 use std::sync::Arc;
 use std::thread;
 
-fn read_n<R>(reader: R, bytes_to_read: u64) -> Result<Vec<u8>, i8>
-where
-    R: Read,
-{
-    let mut buf = vec![];
-    let mut chunk = reader.take(bytes_to_read);
-    // Do appropriate error handling for your situation
-    // Maybe it's OK if you didn't read enough bytes?
-    let n = chunk.read_to_end(&mut buf).expect("Didn't read enough");
-    if bytes_to_read as usize == n {
-        Ok(buf)
-    } else {
-        Err(-1)
-    }
-}
-
 fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
     match s.find(p) {
         Some(index) => &s[..index],
