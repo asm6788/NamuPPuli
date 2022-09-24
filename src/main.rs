@@ -15,7 +15,7 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 }
 
 fn main() {
-    let mut file = File::open(r"test.json").unwrap();
+    let mut file = File::open(r"F:\namuwiki210301\namuwiki_20210301.json").unwrap();
     let mut buf = Arc::new(Vec::new());
     file.read_to_end(Arc::get_mut(&mut buf).unwrap()).unwrap();
 
@@ -23,7 +23,7 @@ fn main() {
 
     pb.set_style(
         ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:60.cyan/blue} {pos:>7}/{len:7} {bytes_per_sec} {eta}",
+            "[{elapsed_precise}] {bar:60.cyan/blue} {pos:>7}/{len:7} {bytes_per_sec} {eta} {msg}",
         )
         .unwrap()
         .progress_chars("##-"),
@@ -43,42 +43,57 @@ fn main() {
         let current_job = thread::spawn(move || {
             let mut record = vec![];
             let mut do_record = false;
+            let mut is_title = false;
             loop {
                 pb.inc(1);
 
-                if (each_size * i + index + 1) as usize >= buf.len()
-                    || each_size * i + index + 1 >= each_size * (i + 1)
+                if (each_size * i + index + 7) as usize >= buf.len()
+                    || each_size * i + index + 7 >= each_size * (i + 1)
                 {
                     break;
                 }
 
                 let buf =
-                    &buf[(each_size * i + index) as usize..=(each_size * i + index + 1) as usize];
+                    &buf[(each_size * i + index) as usize..=(each_size * i + index + 7) as usize];
                 index += 1;
 
                 if buf[0] == b'[' && buf[1] == b'[' {
                     do_record = true;
                 } else if buf[0] == b']' && buf[1] == b']' {
                     do_record = false;
+                } else if buf == b"\"title\":" {
+                    is_title = true;
+                    do_record = true;
+                } else if buf == b",\"text\":" {
+                    do_record = false;
                 }
 
                 if do_record {
                     record.push(buf[1]);
                 } else if record.len() > 0 {
-                    let mut href = str::from_utf8(&record).unwrap();
-                    href = &href[1..href.len() - 1];
-                    if href.starts_with("파일:")
-                        || href.starts_with("분류:")
-                        || href.starts_with("틀:")
-                        || href.starts_with("http")
-                    {
-                        record.clear();
-                        continue;
-                    }
+                    if is_title {
+                        let mut title = str::from_utf8(&record).unwrap();
+                        title = &title[8..title.len() - 2];
+                        is_title = false;
+                        pb.set_message(title.to_string());
 
-                    href = remove_suffix(remove_suffix(&href, "|"), "#");
-                    *counter.entry(String::from(href)).or_insert(0) += 1;
-                    record.clear();
+                        record.clear();
+                    } else {
+                        let mut href = str::from_utf8(&record).unwrap();
+                        href = &href[1..href.len() - 1];
+                        if href.starts_with("파일:")
+                            || href.starts_with("분류:")
+                            || href.starts_with("틀:")
+                            || href.starts_with("http")
+                        {
+                            record.clear();
+                            continue;
+                        }
+
+                        href = remove_suffix(remove_suffix(&href, "|"), "#");
+                        *counter.entry(String::from(href)).or_insert(0) += 1;
+                        record.clear();
+                    }
                 }
             }
         });
