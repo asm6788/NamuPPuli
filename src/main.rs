@@ -127,7 +127,7 @@ fn main() {
     hash_vec.sort_by(|a, b| b.cmp(a));
     for line in hash_vec.into_iter() {
         println!(
-            "{}<->{},{}",
+            "{}->{},{}",
             line.key().href.0,
             line.key().href.1,
             line.value()
