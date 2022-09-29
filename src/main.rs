@@ -48,16 +48,31 @@ struct Cli {
     #[arg(short, long)]
     dot_export: bool,
     #[arg(short, long)]
+    frequency: bool,
+    #[arg(short, long)]
     sort: bool,
 }
 
 fn main() {
     let args = Cli::parse();
+    if args.frequency {
+        if !args.csv_export {
+            eprintln!("빈도분석이 켜졌지만 csv출력이 켜져있지않습니다. 자동으로 csv로 출력합니다.");
+        }
+
+        if args.namu_db.is_none() {
+            eprintln!("빈도분석이 켜졌지만 나무위키 덤프경로를 알수가 없습니다. 종료합니다.");
+        }
+    }
+
     let mut graph = Graph::<String, u32>::new();
     let mut node_map = HashMap::new();
     if args.namu_db.is_some() {
         let counter_d = DashMap::new();
         let counter: Arc<DashMap<Link, u32>> = Arc::new(counter_d);
+
+        let freq_counter_d = DashMap::new();
+        let freq_counter: Arc<DashMap<String, u32>> = Arc::new(freq_counter_d);
 
         let mut file = File::open(args.namu_db.unwrap()).unwrap();
         let mut buf = Arc::new(Vec::new());
@@ -77,6 +92,7 @@ fn main() {
 
         for i in 0..thread_count {
             let counter = counter.clone();
+            let freq_counter = freq_counter.clone();
             let pb = pb.clone();
             let mut index = 0;
             let buf = buf.clone();
@@ -135,11 +151,17 @@ fn main() {
                             }
 
                             href = remove_suffix(remove_suffix(&href, "|"), "#");
-                            *counter
-                                .entry(Link {
-                                    href: (title.to_string(), href.to_string()),
-                                })
-                                .or_insert(0) += 1;
+
+                            //단순 카운팅
+                            if args.frequency {
+                                *freq_counter.entry(String::from(href)).or_insert(0) += 1;
+                            } else {
+                                *counter
+                                    .entry(Link {
+                                        href: (title.to_string(), href.to_string()),
+                                    })
+                                    .or_insert(0) += 1;
+                            }
                             record.clear();
                         }
                     }
@@ -151,6 +173,7 @@ fn main() {
         }
         pb.finish();
 
+        // 데이터 취합 시작
         let block = [
             Regex::new(r"(\d+)세기").unwrap(),
             Regex::new(r"(\d+)년").unwrap(),
@@ -159,7 +182,14 @@ fn main() {
 
         let mut hash_vec: Vec<_> = counter.iter().collect();
 
-        if args.sort {
+        if args.frequency {
+            let mut hash_vec: Vec<_> = freq_counter.iter().collect();
+            hash_vec.sort_by(|a, b| b.cmp(a));
+            for line in hash_vec.into_iter() {
+                println!("\"{}\",{}", line.key(), line.value());
+            }
+            return;
+        } else if args.sort {
             hash_vec.sort_by(|a, b| b.cmp(a));
         }
 
