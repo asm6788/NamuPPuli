@@ -47,7 +47,7 @@ struct Cli {
     csv_export: bool,
     #[arg(short, long)]
     dot_export: bool,
-    #[arg(short, long, default_value_t = true)]
+    #[arg(short, long)]
     sort: bool,
 }
 
