@@ -6,7 +6,10 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/namuPPuli",
-            "args": [],
+            "args": [
+                "-p",
+                "test.csv"
+            ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
@@ -19,7 +22,7 @@
                     "ignoreFailures": true
                 },
                 {
-                    "description":  "디스어셈블리 버전을 Intel(으)로 설정",
+                    "description": "디스어셈블리 버전을 Intel(으)로 설정",
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
                 }
@@ -30,7 +33,10 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/NamuPPuli.exe",
-            "args": [],
+            "args": [
+                "-p",
+                "C:\\Users\\asm6788\\Desktop\\NamuPPuli\\target\\debug\\test.csv"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": []
