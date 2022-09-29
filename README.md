@@ -2,7 +2,7 @@
 나무위키의 하이퍼링크 구문([[Rust]])을 분석하여 여러가지 작업을 행하는 프로그램 입니다.
 
 # 기능
-- [ ] 빈도
+- [x] 빈도
 - [x] 관계망 추출
 - [ ] 이웃 그래프 생성
 - [ ] ...
@@ -25,6 +25,10 @@ namuPPuli -n "나무위키덤프경로" -c -s > network.csv
 아래 명령어로 관계망에서 이웃들을 검색하실수있습니다.
 ``` bash
 namuPPuli -p network.csv
+```
+이것도 가능합니다.
+``` bash
+namuPPuli -n "나무위키덤프경로"
 ```
 ![image](https://user-images.githubusercontent.com/8307128/193088031-5071d7fd-8f9f-4cd5-9193-aa2597fd5cfe.png)
 
