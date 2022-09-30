@@ -33,11 +33,7 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 }
 
 #[derive(Parser)]
-#[clap(
-    author = "Yuhwan Kim(@asm6788)",
-    version,
-    about = "나무위키 데이터 파싱 프로그램"
-)]
+#[clap(about = "나무위키 데이터 파싱 프로그램")]
 struct Cli {
     #[arg(short, long)]
     namu_db: Option<String>,
@@ -47,10 +43,14 @@ struct Cli {
     csv_export: bool,
     #[arg(short, long)]
     dot_export: bool,
+    #[arg(short = 'D', long)]
+    neighbor_dot_export: bool,
     #[arg(short, long)]
     frequency: bool,
     #[arg(short, long)]
     sort: bool,
+    #[arg(long, default_value_t = 1)]
+    depth: u8,
 }
 
 fn main() {
@@ -257,45 +257,117 @@ fn main() {
     if args.dot_export {
         println!("{:?}", Dot::with_config(&graph, &[Config::EdgeIndexLabel]));
     }
+
     eprintln!("데이터 처리완료.\n");
     if !args.csv_export && !args.dot_export {
         eprintln!("검색어를 입력하세요.");
         loop {
-            let edge = std::io::stdin().lines().next().unwrap().unwrap();
+            let parents = std::io::stdin().lines().next().unwrap().unwrap();
 
-            match node_map.get(&edge) {
+            match node_map.get(&parents) {
                 Some(a) => {
-                    let mut temp = Vec::new();
-                    for node in graph.neighbors_directed(*a, petgraph::Direction::Outgoing) {
-                        match graph.edges_connecting(node_map[&edge], node).next() {
-                            Some(p) => temp.push((&graph[node], p.weight())),
-                            None => continue,
-                        }
-                    }
-                    temp.sort_by(|a, b| b.1.cmp(a.1));
-                    for (a, b) in temp {
-                        println!("{} -> {} {}", edge, a, b);
-                    }
-
-                    println!("-----------------");
-
-                    let mut temp = Vec::new();
-                    for node in graph.neighbors_directed(*a, petgraph::Direction::Incoming) {
-                        match graph.edges_connecting(node_map[&edge], node).next() {
-                            Some(p) => temp.push((&graph[node], p.weight())),
-                            None => continue,
-                        }
-                    }
-                    temp.sort_by(|a, b| b.1.cmp(a.1));
-                    for (a, b) in temp {
-                        println!("{} <- {} {}", edge, a, b);
+                    let mut result = Graph::<String, u32>::new();
+                    search_neighbors(
+                        &graph,
+                        *a,
+                        0,
+                        args.depth,
+                        &mut vec![],
+                        &mut HashMap::new(),
+                        args.neighbor_dot_export,
+                        &mut result,
+                    );
+                    if args.neighbor_dot_export {
+                        println!("{:?}", Dot::with_config(&result, &[Config::EdgeIndexLabel]));
                     }
                 }
                 None => {
-                    println!("해당 자료 없음!");
-                    continue;
+                    eprintln!("검색어를 찾을 수 없습니다.");
                 }
             }
         }
+    }
+}
+
+fn search_neighbors(
+    graph: &Graph<String, u32>,
+    atarget: petgraph::graph::NodeIndex,
+    depth: u8,
+    max_depth: u8,
+    visited: &mut Vec<petgraph::graph::NodeIndex>,
+    map: &mut HashMap<String, petgraph::graph::NodeIndex>,
+    neighbor_dot_export: bool,
+    result: &mut Graph<String, u32>,
+) {
+    if visited.contains(&atarget) {
+        return;
+    } else {
+        visited.push(atarget);
+    };
+
+    if depth >= max_depth {
+        return;
+    }
+
+    let mut neighbors = graph
+        .neighbors_directed(atarget, petgraph::Direction::Outgoing)
+        .detach();
+    while let Some((edge, target)) = neighbors.next(&graph) {
+        if !neighbor_dot_export {
+            println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
+        }
+
+        let origin = *map
+            .entry(graph[atarget].to_string())
+            .or_insert(result.add_node(graph[atarget].to_string()));
+
+        let dest = *map
+            .entry(graph[target].to_string())
+            .or_insert(result.add_node(graph[target].to_string()));
+
+        result.add_edge(origin, dest, graph[edge]);
+        search_neighbors(
+            graph,
+            target,
+            depth + 1,
+            max_depth,
+            visited,
+            map,
+            neighbor_dot_export,
+            result,
+        );
+    }
+
+    if !neighbor_dot_export {
+        println!("--------------------------------------");
+    }
+
+    let mut neighbors = graph
+        .neighbors_directed(atarget, petgraph::Direction::Incoming)
+        .detach();
+    while let Some((edge, target)) = neighbors.next(&graph) {
+        if !neighbor_dot_export {
+            println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
+        }
+
+        let origin = *map
+            .entry(graph[atarget].to_string())
+            .or_insert(result.add_node(graph[atarget].to_string()));
+
+        let dest = *map
+            .entry(graph[target].to_string())
+            .or_insert(result.add_node(graph[target].to_string()));
+
+        result.add_edge(dest, origin, graph[edge]); //순서만 바꿔서 넣어줌
+        search_neighbors(
+            graph,
+            target,
+            depth + 1,
+            max_depth,
+            visited,
+            map,
+            neighbor_dot_export,
+            result,
+        );
     }
 }
