@@ -46,6 +46,8 @@ struct Cli {
     dot_export: bool,
     #[arg(short = 'D', long)]
     neighbor_dot_export: bool,
+    #[arg(long, value_delimiter = ',')]
+    stopword: Vec<String>,
     #[arg(short, long)]
     frequency: bool,
     #[arg(short, long)]
@@ -284,6 +286,7 @@ fn main() {
                         *a,
                         0,
                         args.depth,
+                        &args.stopword,
                         &mut HashMap::new(),
                         args.neighbor_dot_export,
                         &mut result,
@@ -302,15 +305,19 @@ fn main() {
 
 fn search_neighbors(
     graph: &Graph<String, u32>,
-
     atarget: petgraph::graph::NodeIndex,
     depth: u8,
     max_depth: u8,
+    stopword: &Vec<String>,
     map: &mut HashMap<String, petgraph::graph::NodeIndex>,
     neighbor_dot_export: bool,
     result: &mut Graph<String, u32>,
 ) {
     if depth >= max_depth {
+        return;
+    }
+
+    if stopword.contains(&graph[atarget]) {
         return;
     }
 
@@ -356,6 +363,7 @@ fn search_neighbors(
                         target,
                         depth + 1,
                         max_depth,
+                        stopword,
                         map,
                         neighbor_dot_export,
                         result,
