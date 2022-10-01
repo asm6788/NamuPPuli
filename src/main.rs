@@ -7,6 +7,7 @@ use petgraph::dot::Config;
 use petgraph::dot::Dot;
 use petgraph::Graph;
 use regex::Regex;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -255,7 +256,7 @@ fn main() {
     }
 
     if args.dot_export {
-        println!("{:?}", Dot::with_config(&graph, &[Config::EdgeIndexLabel]));
+        println!("{:?}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
     }
 
     eprintln!("데이터 처리완료.\n");
@@ -277,7 +278,7 @@ fn main() {
                         &mut result,
                     );
                     if args.neighbor_dot_export {
-                        println!("{:?}", Dot::with_config(&result, &[Config::EdgeIndexLabel]));
+                        println!("{:?}", Dot::with_config(&result, &[Config::EdgeNoLabel]));
                     }
                 }
                 None => {
@@ -290,6 +291,7 @@ fn main() {
 
 fn search_neighbors(
     graph: &Graph<String, u32>,
+
     atarget: petgraph::graph::NodeIndex,
     depth: u8,
     max_depth: u8,
@@ -301,63 +303,57 @@ fn search_neighbors(
         return;
     }
 
-    let origin = *map
-        .entry(graph[atarget].to_string())
-        .or_insert(result.add_node(graph[atarget].to_string()));
+    let origin = *match map.entry(graph[atarget].to_string()) {
+        Entry::Occupied(o) => o.into_mut(),
+        Entry::Vacant(v) => v.insert(result.add_node(graph[atarget].to_string())),
+    };
 
-    let mut neighbors = graph
-        .neighbors_directed(atarget, petgraph::Direction::Outgoing)
-        .detach();
+    for i in 0..2 {
+        let mut neighbors = graph
+            .neighbors_directed(
+                atarget,
+                if i == 0 {
+                    petgraph::Direction::Outgoing
+                } else {
+                    petgraph::Direction::Incoming
+                },
+            )
+            .detach();
 
-    while let Some((edge, target)) = neighbors.next(&graph) {
+        while let Some((edge, target)) = neighbors.next(&graph) {
+            if atarget != target {
+                if !neighbor_dot_export {
+                    if i == 0 {
+                        println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
+                    } else {
+                        println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
+                    }
+                } else {
+                    let dest = *match map.entry(graph[target].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => v.insert(result.add_node(graph[target].to_string())),
+                    };
+
+                    if i == 0 {
+                        result.add_edge(origin, dest, graph[edge]);
+                    } else {
+                        result.add_edge(dest, origin, graph[edge]);
+                    }
+
+                    search_neighbors(
+                        graph,
+                        target,
+                        depth + 1,
+                        max_depth,
+                        map,
+                        neighbor_dot_export,
+                        result,
+                    );
+                }
+            }
+        }
         if !neighbor_dot_export {
-            println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
+            println!("--------------------------------------");
         }
-
-        if atarget != target {
-            let dest = *map
-                .entry(graph[target].to_string())
-                .or_insert(result.add_node(graph[target].to_string()));
-
-            result.add_edge(origin, dest, graph[edge]);
-            search_neighbors(
-                graph,
-                target,
-                depth + 1,
-                max_depth,
-                map,
-                neighbor_dot_export,
-                result,
-            );
-        }
-    }
-
-    if !neighbor_dot_export {
-        println!("--------------------------------------");
-    }
-
-    let mut neighbors = graph
-        .neighbors_directed(atarget, petgraph::Direction::Incoming)
-        .detach();
-
-    while let Some((edge, target)) = neighbors.next(&graph) {
-        if !neighbor_dot_export {
-            println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
-        }
-
-        let dest = *map
-            .entry(graph[target].to_string())
-            .or_insert(result.add_node(graph[target].to_string()));
-
-        result.add_edge(dest, origin, graph[edge]); //순서만 바꿔서 넣어줌
-        search_neighbors(
-            graph,
-            target,
-            depth + 1,
-            max_depth,
-            map,
-            neighbor_dot_export,
-            result,
-        );
     }
 }
