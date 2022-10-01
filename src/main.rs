@@ -272,7 +272,6 @@ fn main() {
                         *a,
                         0,
                         args.depth,
-                        &mut vec![],
                         &mut HashMap::new(),
                         args.neighbor_dot_export,
                         &mut result,
@@ -294,48 +293,43 @@ fn search_neighbors(
     atarget: petgraph::graph::NodeIndex,
     depth: u8,
     max_depth: u8,
-    visited: &mut Vec<petgraph::graph::NodeIndex>,
     map: &mut HashMap<String, petgraph::graph::NodeIndex>,
     neighbor_dot_export: bool,
     result: &mut Graph<String, u32>,
 ) {
-    if visited.contains(&atarget) {
-        return;
-    } else {
-        visited.push(atarget);
-    };
-
     if depth >= max_depth {
         return;
     }
 
+    let origin = *map
+        .entry(graph[atarget].to_string())
+        .or_insert(result.add_node(graph[atarget].to_string()));
+
     let mut neighbors = graph
         .neighbors_directed(atarget, petgraph::Direction::Outgoing)
         .detach();
+
     while let Some((edge, target)) = neighbors.next(&graph) {
         if !neighbor_dot_export {
             println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
         }
 
-        let origin = *map
-            .entry(graph[atarget].to_string())
-            .or_insert(result.add_node(graph[atarget].to_string()));
+        if atarget != target {
+            let dest = *map
+                .entry(graph[target].to_string())
+                .or_insert(result.add_node(graph[target].to_string()));
 
-        let dest = *map
-            .entry(graph[target].to_string())
-            .or_insert(result.add_node(graph[target].to_string()));
-
-        result.add_edge(origin, dest, graph[edge]);
-        search_neighbors(
-            graph,
-            target,
-            depth + 1,
-            max_depth,
-            visited,
-            map,
-            neighbor_dot_export,
-            result,
-        );
+            result.add_edge(origin, dest, graph[edge]);
+            search_neighbors(
+                graph,
+                target,
+                depth + 1,
+                max_depth,
+                map,
+                neighbor_dot_export,
+                result,
+            );
+        }
     }
 
     if !neighbor_dot_export {
@@ -345,14 +339,11 @@ fn search_neighbors(
     let mut neighbors = graph
         .neighbors_directed(atarget, petgraph::Direction::Incoming)
         .detach();
+
     while let Some((edge, target)) = neighbors.next(&graph) {
         if !neighbor_dot_export {
             println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
         }
-
-        let origin = *map
-            .entry(graph[atarget].to_string())
-            .or_insert(result.add_node(graph[atarget].to_string()));
 
         let dest = *map
             .entry(graph[target].to_string())
@@ -364,7 +355,6 @@ fn search_neighbors(
             target,
             depth + 1,
             max_depth,
-            visited,
             map,
             neighbor_dot_export,
             result,
