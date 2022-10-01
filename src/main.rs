@@ -276,7 +276,12 @@ fn main() {
     if !args.csv_export && !args.dot_export {
         eprintln!("검색어를 입력하세요.");
         loop {
-            let parents = std::io::stdin().lines().next().unwrap().unwrap();
+            let parents = match std::io::stdin().lines().next() {
+                Some(a) => a.unwrap(),
+                None => {
+                    return;
+                }
+            };
 
             match node_map.get(&parents) {
                 Some(a) => {
