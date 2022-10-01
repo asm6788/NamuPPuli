@@ -215,12 +215,19 @@ fn main() {
                         line.value()
                     );
                 } else {
-                    let origin = *node_map
-                        .entry((*line.key().href.0).to_string())
-                        .or_insert(graph.add_node((*line.key().href.0).to_string()));
-                    let dest = *node_map
-                        .entry((*line.key().href.1).to_string())
-                        .or_insert(graph.add_node((*line.key().href.1).to_string()));
+                    let origin = *match node_map.entry((*line.key().href.0).to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => {
+                            v.insert(graph.add_node((*line.key().href.0).to_string()))
+                        }
+                    };
+
+                    let dest = *match node_map.entry((*line.key().href.1).to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => {
+                            v.insert(graph.add_node((*line.key().href.1).to_string()))
+                        }
+                    };
                     graph.add_edge(origin, dest, *line.value());
                 }
             }
@@ -236,12 +243,16 @@ fn main() {
             pb.inc(1);
             match result {
                 Ok(result) => {
-                    let origin = *node_map
-                        .entry(result[0].to_string())
-                        .or_insert(graph.add_node(result[0].to_string()));
-                    let dest = *node_map
-                        .entry(result[1].to_string())
-                        .or_insert(graph.add_node(result[1].to_string()));
+                    let origin = *match node_map.entry(result[0].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => v.insert(graph.add_node(result[0].to_string())),
+                    };
+
+                    let dest = *match node_map.entry(result[1].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => v.insert(graph.add_node(result[1].to_string())),
+                    };
+
                     graph.add_edge(origin, dest, result[2].parse::<u32>().unwrap());
                 }
                 Err(_) => {
