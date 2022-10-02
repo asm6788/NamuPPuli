@@ -35,7 +35,9 @@
             "program": "${workspaceRoot}/target/debug/NamuPPuli.exe",
             "args": [
                 "-p",
-                "C:\\Users\\asm6788\\Desktop\\NamuPPuli\\target\\debug\\test.csv"
+                "C:\\Users\\asm6788\\Desktop\\NamuPPuli\\target\\debug\\test.csv",
+                "--stopword",
+                "[나라],PPAP"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

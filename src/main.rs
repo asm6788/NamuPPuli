@@ -68,6 +68,21 @@ fn main() {
         }
     }
 
+    let mut stopword_preset = HashMap::new();
+    stopword_preset.insert(
+        "[나라]",
+        vec!["대한민국", "영국", "프랑스", "중국", "일본", "북한", "소련"],
+    );
+
+    let mut stopword = args.stopword;
+
+    for (key, value) in stopword_preset {
+        if stopword.contains(&key.to_string()) {
+            stopword.remove(stopword.iter().position(|x| x == &key).unwrap());
+            stopword.extend(value.iter().map(|s| s.to_string()));
+        }
+    }
+
     let mut graph = Graph::<String, u32>::new();
     let mut node_map = HashMap::new();
     if args.namu_db.is_some() {
@@ -292,7 +307,7 @@ fn main() {
                         *a,
                         0,
                         args.depth,
-                        &args.stopword,
+                        &stopword,
                         &mut HashMap::new(),
                         args.neighbor_dot_export,
                         &mut result,
