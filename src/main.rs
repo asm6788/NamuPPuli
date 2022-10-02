@@ -215,12 +215,12 @@ fn main() {
         for line in hash_vec.into_iter() {
             if !block
                 .iter()
-                .map(|v| v.is_match(&*line.key().href.0))
+                .map(|v| v.is_match(line.key().href.0.as_str()))
                 .collect::<Vec<bool>>()
                 .contains(&true)
                 && !block
                     .iter()
-                    .map(|v| v.is_match(&*line.key().href.1))
+                    .map(|v| v.is_match(line.key().href.1.as_str()))
                     .collect::<Vec<bool>>()
                     .contains(&true)
                 && *line.value() > 1
