@@ -80,11 +80,12 @@ fn main() {
         let mut file = File::open(args.namu_db.unwrap()).unwrap();
         let mut buf = Arc::new(Vec::new());
         file.read_to_end(Arc::get_mut(&mut buf).unwrap()).unwrap();
+        eprintln!("메모리 적재 완료");
 
         let pb = Arc::new(ProgressBar::new(buf.len() as u64));
         pb.set_style(
             ProgressStyle::with_template(
-                "[{elapsed_precise}] {bar:60.cyan/blue} {pos:>7}/{len:7} {bytes_per_sec} {eta} {msg}",
+                "[{elapsed_precise}] {bar:60.cyan/blue} {pos:>7}/{len:7} {bytes_per_sec}",
             )
             .unwrap()
             .progress_chars("##-"),
@@ -93,10 +94,10 @@ fn main() {
         let thread_count = num_cpus::get() as u64;
         let each_size = file.metadata().unwrap().len() / thread_count;
 
+        let mut threads = vec![];
         for i in 0..thread_count {
             let counter = counter.clone();
             let freq_counter = freq_counter.clone();
-            let pb = pb.clone();
             let mut index = 0;
             let buf = buf.clone();
             let current_job = thread::spawn(move || {
@@ -105,10 +106,6 @@ fn main() {
                 let mut is_title = false;
                 let mut title: String = String::new();
                 loop {
-                    if i == thread_count - 1 {
-                        pb.inc(thread_count);
-                    }
-
                     if (each_size * i + index + 7) as usize >= buf.len()
                         || each_size * i + index + 7 >= each_size * (i + 1)
                     {
@@ -141,10 +138,6 @@ fn main() {
                             let temp = str::from_utf8(&record).unwrap();
                             title = (&temp[8..temp.len() - 2]).to_string();
                             is_title = false;
-                            if i == thread_count - 1 {
-                                //보는맛은 있어야지
-                                pb.set_message(title.to_string());
-                            }
                             record.clear();
                         } else {
                             let mut href = str::from_utf8(&record).unwrap();
@@ -175,10 +168,13 @@ fn main() {
                     }
                 }
             });
-            if i == thread_count - 1 {
-                current_job.join().unwrap();
-            }
+            threads.push(current_job);
         }
+
+        for handle in threads {
+            handle.join().unwrap();
+        }
+
         pb.finish();
 
         // 데이터 취합 시작
