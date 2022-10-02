@@ -378,18 +378,18 @@ fn search_neighbors(
                     } else {
                         result.add_edge(dest, origin, graph[edge]);
                     }
-
-                    search_neighbors(
-                        graph,
-                        target,
-                        depth + 1,
-                        max_depth,
-                        stopword,
-                        map,
-                        neighbor_dot_export,
-                        result,
-                    );
                 }
+
+                search_neighbors(
+                    graph,
+                    target,
+                    depth + 1,
+                    max_depth,
+                    stopword,
+                    map,
+                    neighbor_dot_export,
+                    result,
+                );
             }
         }
         if !neighbor_dot_export {
