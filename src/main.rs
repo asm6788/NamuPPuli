@@ -105,7 +105,9 @@ fn main() {
                 let mut is_title = false;
                 let mut title: String = String::new();
                 loop {
-                    pb.inc(1);
+                    if i == thread_count - 1 {
+                        pb.inc(thread_count);
+                    }
 
                     if (each_size * i + index + 7) as usize >= buf.len()
                         || each_size * i + index + 7 >= each_size * (i + 1)
@@ -139,7 +141,10 @@ fn main() {
                             let temp = str::from_utf8(&record).unwrap();
                             title = (&temp[8..temp.len() - 2]).to_string();
                             is_title = false;
-                            pb.set_message(title.to_string());
+                            if i == thread_count - 1 {
+                                //보는맛은 있어야지
+                                pb.set_message(title.to_string());
+                            }
                             record.clear();
                         } else {
                             let mut href = str::from_utf8(&record).unwrap();
