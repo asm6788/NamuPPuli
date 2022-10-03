@@ -337,6 +337,7 @@ async fn main() {
                         &mut HashMap::new(),
                         args.neighbor_dot_export,
                         &gephi,
+                        &mut 0,
                         &mut result,
                     )
                     .await;
@@ -362,6 +363,7 @@ async fn search_neighbors(
     map: &mut HashMap<String, petgraph::graph::NodeIndex>,
     neighbor_dot_export: bool,
     gephi: &Gephi,
+    id: &mut usize,
     result: &mut Graph<String, u32>,
 ) {
     if depth >= max_depth {
@@ -417,20 +419,21 @@ async fn search_neighbors(
 
                     if i == 0 {
                         let weight = graph[edge];
-                        let length = result.edge_count();
 
                         gephi
-                            .add_edge(length, origin.index(), dest.index(), weight)
+                            .add_edge(*id, origin.index(), dest.index(), weight)
                             .await
                             .ok();
+
+                        *id += 1;
                     } else {
                         let weight = graph[edge];
-                        let length = result.edge_count();
 
                         gephi
-                            .add_edge(length, dest.index(), origin.index(), weight)
+                            .add_edge(*id, dest.index(), origin.index(), weight)
                             .await
                             .ok();
+                        *id += 1;
                     }
 
                     thread::sleep(Duration::from_millis(10));
@@ -461,6 +464,7 @@ async fn search_neighbors(
                     map,
                     neighbor_dot_export,
                     gephi,
+                    id,
                     result,
                 )
                 .await;
