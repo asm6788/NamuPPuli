@@ -1,5 +1,7 @@
+use async_recursion::async_recursion;
 use clap::Parser;
 use dashmap::DashMap;
+use gephi::Gephi;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use linecount::count_lines;
@@ -14,6 +16,7 @@ use std::io::prelude::*;
 use std::str;
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 #[derive(Eq, Hash, Debug)]
 struct Link {
@@ -36,37 +39,60 @@ fn remove_suffix<'a>(s: &'a str, p: &str) -> &'a str {
 #[derive(Parser)]
 #[clap(about = "나무위키 데이터 파싱 프로그램")]
 struct Cli {
+    ///나무위키 데이터베이스 경로
     #[arg(short, long)]
     namu_db: Option<String>,
+    ///나무위키 키워드망 덤프 경로
     #[arg(short, long)]
     parsed_db: Option<String>,
+    ///키워드망/빈도분석을 csv 형식으로 출력
     #[arg(short, long)]
     csv_export: bool,
+    ///키워드망을 dot 형식으로 출력
     #[arg(short, long)]
     dot_export: bool,
+    ///검색된 이웃들을 dot 형식으로 출력
     #[arg(short = 'D', long)]
     neighbor_dot_export: bool,
+    ///이 단어들의 이웃을 검색하지 않습니다
     #[arg(long, value_delimiter = ',')]
     stopword: Vec<String>,
+    ///키워드 빈도 분석을 수행합니다
     #[arg(short, long)]
     frequency: bool,
+    ///키워드망/빈도분석을 가중치순으로 정렬합니다
     #[arg(short, long)]
     sort: bool,
+    ///얼마나 재귀적으로 이웃을 탐색할지 정합니다
     #[arg(long, default_value_t = 1)]
     depth: u8,
+    ///gephi 서버의 주소를 지정합니다
+    #[arg(long)]
+    hostname: Option<String>,
+    ///gephi의 workspace번호를 지정합니다
+    #[arg(long)]
+    workspace: Option<u8>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Cli::parse();
+
     if args.frequency {
         if !args.csv_export {
             eprintln!("빈도분석이 켜졌지만 csv출력이 켜져있지않습니다. 자동으로 csv로 출력합니다.");
         }
 
         if args.namu_db.is_none() {
-            eprintln!("빈도분석이 켜졌지만 나무위키 덤프경로를 알수가 없습니다. 종료합니다.");
+            eprintln!("빈도분석이 켜졌지만 나무위키 덤프경로를 알수가 없습니다.");
         }
     }
+
+    let gephi = Gephi {
+        enable: args.workspace.is_some(),
+        hostname: args.hostname.unwrap_or("localhost:8080".to_string()),
+        workspace: format!("workspace{}", args.workspace.unwrap_or(0)),
+    };
 
     let mut stopword_preset = HashMap::new();
     stopword_preset.insert(
@@ -310,8 +336,10 @@ fn main() {
                         &stopword,
                         &mut HashMap::new(),
                         args.neighbor_dot_export,
+                        &gephi,
                         &mut result,
-                    );
+                    )
+                    .await;
                     if args.neighbor_dot_export {
                         println!("{:?}", Dot::with_config(&result, &[Config::EdgeNoLabel]));
                     }
@@ -324,7 +352,8 @@ fn main() {
     }
 }
 
-fn search_neighbors(
+#[async_recursion]
+async fn search_neighbors(
     graph: &Graph<String, u32>,
     atarget: petgraph::graph::NodeIndex,
     depth: u8,
@@ -332,6 +361,7 @@ fn search_neighbors(
     stopword: &Vec<String>,
     map: &mut HashMap<String, petgraph::graph::NodeIndex>,
     neighbor_dot_export: bool,
+    gephi: &Gephi,
     result: &mut Graph<String, u32>,
 ) {
     if depth >= max_depth {
@@ -341,11 +371,6 @@ fn search_neighbors(
     if stopword.contains(&graph[atarget]) {
         return;
     }
-
-    let origin = *match map.entry(graph[atarget].to_string()) {
-        Entry::Occupied(o) => o.into_mut(),
-        Entry::Vacant(v) => v.insert(result.add_node(graph[atarget].to_string())),
-    };
 
     for i in 0..2 {
         let mut neighbors = graph
@@ -361,13 +386,60 @@ fn search_neighbors(
 
         while let Some((edge, target)) = neighbors.next(&graph) {
             if atarget != target {
-                if !neighbor_dot_export {
+                if !neighbor_dot_export && !gephi.enable {
                     if i == 0 {
                         println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
                     } else {
                         println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
                     }
-                } else {
+                } else if !neighbor_dot_export && gephi.enable {
+                    let origin = *match map.entry(graph[atarget].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => {
+                            let node = result.add_node(graph[atarget].to_string());
+                            let label = String::from(&graph[atarget]);
+                            gephi.add_node(node.index(), label.as_str()).await.ok();
+
+                            v.insert(node)
+                        }
+                    };
+
+                    let dest = *match map.entry(graph[target].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => {
+                            let node = result.add_node(graph[target].to_string());
+                            let label = String::from(&graph[target]);
+                            gephi.add_node(node.index(), label.as_str()).await.ok();
+
+                            v.insert(node)
+                        }
+                    };
+
+                    if i == 0 {
+                        let weight = graph[edge];
+                        let length = result.edge_count();
+
+                        gephi
+                            .add_edge(length, origin.index(), dest.index(), weight)
+                            .await
+                            .ok();
+                    } else {
+                        let weight = graph[edge];
+                        let length = result.edge_count();
+
+                        gephi
+                            .add_edge(length, dest.index(), origin.index(), weight)
+                            .await
+                            .ok();
+                    }
+
+                    thread::sleep(Duration::from_millis(10));
+                } else if neighbor_dot_export && !gephi.enable {
+                    let origin = *match map.entry(graph[atarget].to_string()) {
+                        Entry::Occupied(o) => o.into_mut(),
+                        Entry::Vacant(v) => v.insert(result.add_node(graph[atarget].to_string())),
+                    };
+
                     let dest = *match map.entry(graph[target].to_string()) {
                         Entry::Occupied(o) => o.into_mut(),
                         Entry::Vacant(v) => v.insert(result.add_node(graph[target].to_string())),
@@ -388,11 +460,13 @@ fn search_neighbors(
                     stopword,
                     map,
                     neighbor_dot_export,
+                    gephi,
                     result,
-                );
+                )
+                .await;
             }
         }
-        if !neighbor_dot_export {
+        if !neighbor_dot_export && !gephi.enable {
             println!("--------------------------------------");
         }
     }

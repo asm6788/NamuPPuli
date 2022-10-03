@@ -37,7 +37,9 @@
                 "-p",
                 "C:\\Users\\asm6788\\Desktop\\NamuPPuli\\target\\debug\\test.csv",
                 "--stopword",
-                "[나라],PPAP"
+                "[나라],PPAP",
+                "--workspace",
+                "1"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

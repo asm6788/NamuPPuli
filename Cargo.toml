@@ -14,3 +14,6 @@ regex = "1.6.0"
 clap = { version = "4.0.2", features = ["derive"] }
 csv = "1.1.6"
 linecount = "0.1.0"
+gephi = {path = "gephi"}
+tokio = { version = "1.21.2", features = ["full"] }
+async-recursion = "1.0.0"
