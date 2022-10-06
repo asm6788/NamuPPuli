@@ -48,6 +48,9 @@ struct Cli {
     ///키워드망/빈도분석을 csv 형식으로 출력
     #[arg(short, long)]
     csv_export: bool,
+    ///최소 가중치
+    #[arg(short, long, default_value_t = 2)]
+    threshold: u32,
     ///키워드망을 dot 형식으로 출력
     #[arg(short, long)]
     dot_export: bool,
@@ -304,7 +307,7 @@ async fn main() {
                     .map(|v| v.is_match(line.key().href.1.as_str()))
                     .collect::<Vec<bool>>()
                     .contains(&true)
-                && *line.value() > 1
+                && *line.value() >= args.threshold
             {
                 if args.csv_export {
                     println!(
