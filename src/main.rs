@@ -49,7 +49,7 @@ struct Cli {
     #[arg(short, long)]
     csv_export: bool,
     ///최소 가중치
-    #[arg(short, long, default_value_t = 2)]
+    #[arg(short, long, default_value_t = 3)]
     threshold: u32,
     ///키워드망을 dot 형식으로 출력
     #[arg(short, long)]
