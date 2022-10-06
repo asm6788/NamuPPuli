@@ -449,8 +449,10 @@ async fn search_neighbors(
         while let Some((edge, target)) = neighbors.next(&graph) {
             if atarget != target {
                 if !neighbor_dot_export && !gephi.enable {
+                    //plain text 출력 - 정렬을 위해 저장
                     temp.push((target, graph[edge]));
                 } else if !neighbor_dot_export && gephi.enable {
+                    //Gephi GraphStreaming 출력
                     let origin = *match map.entry(graph[atarget].to_string()) {
                         Entry::Occupied(o) => o.into_mut(),
                         Entry::Vacant(v) => {
@@ -494,6 +496,7 @@ async fn search_neighbors(
 
                     thread::sleep(Duration::from_millis(10));
                 } else if neighbor_dot_export && !gephi.enable {
+                    //dot 출력
                     let origin = *match map.entry(graph[atarget].to_string()) {
                         Entry::Occupied(o) => o.into_mut(),
                         Entry::Vacant(v) => v.insert(result.add_node(graph[atarget].to_string())),
@@ -528,6 +531,7 @@ async fn search_neighbors(
         }
 
         if !neighbor_dot_export && !gephi.enable {
+            //plain text 출력
             temp.sort_by(|a, b| a.1.cmp(&b.1));
             for (target, edge) in temp {
                 if i == 0 {
