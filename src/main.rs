@@ -444,14 +444,12 @@ async fn search_neighbors(
             )
             .detach();
 
+        let mut temp = Vec::new();
+
         while let Some((edge, target)) = neighbors.next(&graph) {
             if atarget != target {
                 if !neighbor_dot_export && !gephi.enable {
-                    if i == 0 {
-                        println!("{} -> {} ({})", graph[atarget], graph[target], graph[edge]);
-                    } else {
-                        println!("{} <- {} ({})", graph[atarget], graph[target], graph[edge]);
-                    }
+                    temp.push((target, graph[edge]));
                 } else if !neighbor_dot_export && gephi.enable {
                     let origin = *match map.entry(graph[atarget].to_string()) {
                         Entry::Occupied(o) => o.into_mut(),
@@ -528,7 +526,16 @@ async fn search_neighbors(
                 .await;
             }
         }
+
         if !neighbor_dot_export && !gephi.enable {
+            temp.sort_by(|a, b| a.1.cmp(&b.1));
+            for (target, edge) in temp {
+                if i == 0 {
+                    println!("{} -> {} ({})", graph[atarget], graph[target], edge);
+                } else {
+                    println!("{} <- {} ({})", graph[atarget], graph[target], edge);
+                }
+            }
             println!("--------------------------------------");
         }
     }
