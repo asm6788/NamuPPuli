@@ -14,6 +14,8 @@
 ``` bash
 cargo build --release
 ```
+# 주의점
+키워드망 분석중 노이즈가 발생하기 쉬운 날짜 문서(~세기,~년,~월 ~일) 그리고 기본적으로 가중치가 1인 연결은 무시됩니다.(-t로 변경 가능)
 
 # 사용법
 먼저 [나무위키:데이터베이스 덤프](https://namu.wiki/w/%EB%82%98%EB%AC%B4%EC%9C%84%ED%82%A4:%EB%8D%B0%EC%9D%B4%ED%84%B0%EB%B2%A0%EC%9D%B4%EC%8A%A4%20%EB%8D%A4%ED%94%84)를 받습니다.
@@ -40,6 +42,7 @@ namuPPuli -n "나무위키덤프경로"
 | `-n / --nanum-db` | 나무위키 데이터베이스 경로 |
 | `-p / --parsed-db` | 나무위키 키워드망 덤프 경로 |
 | `-c / --csv-export` | 키워드망/빈도분석을 csv 형식으로 출력 |
+| `-t / --threshold` | 키워드망 최소 가중치 |
 | `-d / --dot-export` | 키워드망을 dot 형식으로 출력 |
 | `-D / --neighbor-dot-export` | 검색된 이웃들을 dot 형식으로 출력 |
 | `--stopword` | 이 단어들의 이웃을 검색하지 않습니다 | --stopword "[나라],치킨,피자"
